@@ -13,8 +13,8 @@ using namespace std;
 
 
 // Add prototypes of helper functions here
-void wordFinder(const string& in, const set<string>& dict, set<string>& results, string& buildStr, 
-                  int idx, map<char, int>& floatCount, map<char, int>& currCount, int blanks, int floats);
+void wordFinder(const string& in, const set<string>& dict, set<string>& results, string buildStr, 
+                  int idx, map<char, int>& floatCount, int count, int totalFloats);
 
 // Definition of primary wordle function
 std::set<std::string> wordle(
@@ -23,11 +23,11 @@ std::set<std::string> wordle(
     const std::set<std::string>& dict)
 {
     // Add your code here
-  map<char, int> floatCount, currCount;
+  map<char, int> floatCount;
   set<string> results;
-  string buildStr = in;
+
   int blanks = 0;
-  int floats = floating.length();
+  int totalFloats = 0;
 
   for(size_t i = 0; i < in.length(); i++)
   {
@@ -40,27 +40,25 @@ std::set<std::string> wordle(
   for(size_t i = 0; i < floating.length(); i++)
   {
     floatCount[floating[i]]++;
+    totalFloats++;
   }
-  wordFinder(in, dict, results, buildStr, 0, floatCount, currCount, blanks, floats);
+  wordFinder(in, dict, results, in, 0, floatCount, blanks, totalFloats);
   return results;
 } 
 
 // Define any helper functions here
-void wordFinder(const string& in, const set<string>& dict, set<string>& results, string& buildStr, 
-                  int idx, map<char, int>& floatCount, map<char, int>& currCount, int blanks, int floats)
+void wordFinder(const string& in, const set<string>& dict, set<string>& results, string buildStr, 
+                  int idx, map<char, int>& floatCount, int blanks, int totalFloats)
 {
   if(idx == in.size())
   {
     // all floating characters not used 
-    for(map<char, int>::iterator it = floatCount.begin(); it != floatCount.end(); ++it)
+    if(totalFloats > 0)
     {
-      if(currCount[it->first] < it->second)
-      {
-        return;
-      }
+      return;
     }
     // if all letters used and in dictionary --> valid word
-    if (dict.find(buildStr) != dict.end())
+    else if(dict.find(buildStr) != dict.end())
     {
       results.insert(buildStr);
     }
@@ -69,40 +67,43 @@ void wordFinder(const string& in, const set<string>& dict, set<string>& results,
 
   if(in[idx] != '-')
   {
-    wordFinder(in, dict, results, buildStr, idx + 1, floatCount, currCount, blanks, floats);
+    wordFinder(in, dict, results, buildStr, idx + 1, floatCount, blanks, totalFloats);
   }
   else
   {
-    if(blanks == floats)
+    map<char, int> originalFloatCount = floatCount;
+    if(blanks == totalFloats)
     {
       for(map<char, int>::iterator it = floatCount.begin(); it != floatCount.end(); ++it)
       {
-        if(currCount[it->first] < it->second)
+        if(it->second > 0)
         {
           buildStr[idx] = it->first;
-          currCount[it->first]++;
-          wordFinder(in, dict, results, buildStr, idx + 1, floatCount, currCount, blanks, floats);
-          currCount[it->first]--;
+          it->second--;
+          wordFinder(in, dict, results, buildStr, idx + 1, floatCount, blanks - 1, totalFloats - 1);
+          it->second++;
         }
-      }      
-    }
+        
+      }
+    }      
+    
     else
     {
       for(char c = 'a'; c <= 'z'; c++)
-    {
-      buildStr[idx] = c;
-      if(floatCount.find(c) != floatCount.end())
       {
-        currCount[c]++;
-      }
-      wordFinder(in, dict, results, buildStr, idx + 1, floatCount, currCount, blanks, floats);
-
-      // reset currCount status after recursion to backtrack properly
-      if(floatCount.find(c) != floatCount.end())
-      {
-        currCount[c]--;
+        buildStr[idx] = c;
+        if(floatCount.find(c) != floatCount.end() && floatCount[c] > 0)
+        {
+          floatCount[c]--;
+          wordFinder(in, dict, results, buildStr, idx + 1, floatCount, blanks - 1, totalFloats - 1);
+          floatCount[c]++;
+        }
+        else
+        {
+          wordFinder(in, dict, results, buildStr, idx + 1, floatCount, blanks - 1, totalFloats);
+        }
       }
     }
-    }    
+    buildStr[idx] = '-';
   }
 }
